@@ -5,6 +5,7 @@ import { normalizeBusyMessageMode, validateBusyMessageMode } from './message-mod
 import { atConnectionStage, connectionStageError, extractConnectionEvidence } from './connection-error.mjs';
 import { validateBotAlias, withBotAlias } from './bot-alias.mjs';
 import { defaultImWorkspace, ensureImWorkspaceDirectory, sameWorkspacePath } from './default-workspace.mjs';
+import { decodeProjectPaths, encodeProjectPaths } from './project-paths.mjs';
 import {
   mkdir,
   readFile,
@@ -314,6 +315,7 @@ function normalizeDsBotBindings(value) {
 }
 
 function normalizeDocument(value) {
+  value = decodeProjectPaths(value);
   if (!value || typeof value !== 'object' || Array.isArray(value)) return invalidWorkspaceConfig('$', 'expected-object');
   if (![1, DELIVERY_DOCUMENT_VERSION, SESSION_SYNC_DOCUMENT_VERSION, DS_BOT_DOCUMENT_VERSION, CURRENT_DOCUMENT_VERSION].includes(value.version)) return invalidWorkspaceConfig('version', 'unsupported-version');
   if (!value.workspaces || typeof value.workspaces !== 'object' || Array.isArray(value.workspaces)) return invalidWorkspaceConfig('workspaces', 'expected-object');
@@ -454,6 +456,7 @@ function storedDocument({
 }
 
 async function writeStoredDocument(path, document) {
+  document = encodeProjectPaths(document);
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   const temporary = `${path}.tmp`;
   await writeFile(temporary, `${JSON.stringify(document, null, 2)}\n`, {
