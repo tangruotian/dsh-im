@@ -92,6 +92,16 @@ export const name = 'im-settings';
 export const inject = ['slots', 'connection', 'locale', 'workspaces'];
 export const IM_PLUGIN_VERSION = manifest.version;
 
+// [personal-agent library mode]
+// This fork is consumed as a library by @personal/ella, not installed as a
+// standalone DSH plugin/bundle. In library mode dsh-im publishes only the
+// embeddable `dshImClient` v1 service (render the full management panel) and
+// suppresses its own navigation: the Settings -> IM bots section, the sidebar
+// panel-list row, the plugin-detail action and its own `main` panel. The IM UI
+// then lives exclusively in Ella's "IM" tab. Set to false to restore the
+// upstream standalone-plugin shape (useful when rebasing onto upstream main).
+const LIBRARY_MODE = true;
+
 function callWorkspaceDirectoryApi(ctx, method, ...args) {
   // Current DSH owns directory operations on uiWorkspace; legacy Hosts keep them on workspaces.
   const uiWorkspace = typeof ctx.get === 'function' ? ctx.get('uiWorkspace') : undefined;
@@ -612,12 +622,17 @@ export function apply(ctx) {
     preferredSectionId: props.preferredSectionId,
   });
 
-  const pluginPage = installImPluginPage(ctx, {
+  // [personal-agent library mode] In library mode the IM panel is rendered by
+  // Ella's "IM" tab via dshImClient.render(); dsh-im no longer owns any
+  // navigation of its own (settings section, sidebar row, plugin-detail action,
+  // main panel). Everything below still builds the panel dependencies and the
+  // embeddable service, so the panel keeps all of its original functionality.
+  const pluginPage = LIBRARY_MODE ? null : installImPluginPage(ctx, {
     packageName: manifest.name,
     renderPanel: buildPanelElement,
   });
 
-  ctx.effect(() => {
+  if (!LIBRARY_MODE) ctx.effect(() => {
     sidebarSync = installSidebarVisibilitySync({
       rpcCall: (endpoint, payload, signal) =>
         callManagementRpc(ctx.connection, SIDEBAR_SETTINGS_RPC_CHANNEL, endpoint, payload, signal),
@@ -659,9 +674,10 @@ export function apply(ctx) {
       });
     };
 
-    // Publish only after the default registration is established, so a
-    // consumer hiding it during service discovery cannot be overridden.
-    setSettingsVisible(true);
+    // In library mode there is no standalone Settings entry by default; the
+    // consumer (Ella) hides navigation and calls render() itself. The setter is
+    // still exposed for API compatibility / opt-in recovery.
+    if (!LIBRARY_MODE) setSettingsVisible(true);
     if (typeof ctx.provide === 'function') {
       ctx.provide('dshImClient', Object.freeze({
         version: 1,
