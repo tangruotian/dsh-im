@@ -47,7 +47,9 @@
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
     "./package.json": "./package.json",
-    "./locale/*.json": "./locale/*.json"
+    "./locale/*.json": "./locale/*.json",
+    "./src/*": "./src/*",
+    "./plugin-src/*": "./plugin-src/*"
   },
   "files": [
     "assets",
