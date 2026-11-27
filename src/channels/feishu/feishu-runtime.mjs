@@ -137,6 +137,7 @@ export class FeishuRuntime {
   #repair;
   #client = null;
   #bridge = null;
+  #createBridge;
   #consumerMode;
   #acceptExternal;
   #wsClient = null;
@@ -191,6 +192,7 @@ export class FeishuRuntime {
     slashPanel = null,
     wsAgent,
     logger = console,
+    createBridge = (options) => new FeishuHarnessBridge(options),
   }) {
     if (!lark) throw new Error('FeishuRuntime requires the Feishu SDK');
     if (!appId || !appSecret) throw new Error('FeishuRuntime requires app credentials');
@@ -242,6 +244,7 @@ export class FeishuRuntime {
     this.#wsAgent = wsAgent;
     this.#logger = logger; this.#diagnostics = createConnectionDiagnostics({ channel: 'feishu', logger });
     this.#status = createBridgeStatus({ allowedSenderCount: normalizedOwners.length });
+    this.#createBridge = createBridge;
   }
 
   get status() {
@@ -366,7 +369,7 @@ export class FeishuRuntime {
         client,
         initialText: t('已连接 DeepSeek Harness，正在思考…'),
       });
-      const bridge = this.#consumerMode === 'external-consumer' ? null : new FeishuHarnessBridge({
+      const bridge = this.#consumerMode === 'external-consumer' ? null : this.#createBridge({
         client,
         channel,
         harness: this.#harness,

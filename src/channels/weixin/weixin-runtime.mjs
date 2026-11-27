@@ -127,6 +127,8 @@ export class WeixinRuntime {
   #startRetryDelaysMs;
   #status = createWeixinRuntimeStatus();
   #bridge = null;
+  #createBridge;
+  #requireInboundConfirmation;
   #abortController = null;
   #monitor = null;
   #starting = null;
@@ -144,6 +146,8 @@ export class WeixinRuntime {
     replyTimeoutMs = 600_000,
     maxMessageChars = DEFAULT_WEIXIN_MAX_MESSAGE_CHARS,
     startRetryDelaysMs,
+    createBridge = (options) => new WeixinHarnessBridge(options),
+    requireInboundConfirmation = false,
   }) {
     if (!api || !config || !token || !harness || !state) {
       throw new TypeError('WeixinRuntime requires API, account, token, Harness, and state');
@@ -160,6 +164,8 @@ export class WeixinRuntime {
     this.#replyTimeoutMs = replyTimeoutMs;
     this.#maxMessageChars = maxMessageChars;
     this.#startRetryDelaysMs = startRetryDelays(startRetryDelaysMs);
+    this.#createBridge = createBridge;
+    this.#requireInboundConfirmation = requireInboundConfirmation === true;
   }
 
   get status() {
@@ -193,7 +199,7 @@ export class WeixinRuntime {
       await this.#notifyStart();
       this.#abortController = new AbortController();
       const signal = this.#abortController.signal;
-      this.#bridge = new WeixinHarnessBridge({
+      this.#bridge = this.#createBridge({
         api: this.#api,
         baseUrl: this.#config.baseUrl,
         token: this.#token,
@@ -277,13 +283,24 @@ export class WeixinRuntime {
         this.#status.connectionError = null;
 
         for (const message of orderWeixinMessages(response?.msgs)) {
-          void this.#bridge.accept(message).catch((error) => {
-            if (signal.aborted) return;
-            this.#logger.error?.(
-              `[dsh-weixin] account ${this.#config.botId} message handling failed:`,
-              error,
-            );
-          });
+          if (this.#requireInboundConfirmation) {
+            // Host-managed ingestion (e.g. Ella): a message only counts as
+            // received once the bridge confirms it was persisted. Await each
+            // accept and keep the cursor on failure so the batch is retried;
+            // the throw lands in the outer catch with its backoff.
+            const received = await this.#bridge.accept(message);
+            if (received?.accepted === false) {
+              throw new Error('Ella 信息流暂时无法接收消息');
+            }
+          } else {
+            void this.#bridge.accept(message).catch((error) => {
+              if (signal.aborted) return;
+              this.#logger.error?.(
+                `[dsh-weixin] account ${this.#config.botId} message handling failed:`,
+                error,
+              );
+            });
+          }
         }
         if (typeof response?.get_updates_buf === 'string' && response.get_updates_buf) {
           await this.#state.setGetUpdatesBuf(response.get_updates_buf);

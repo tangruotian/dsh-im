@@ -567,6 +567,7 @@ export class DiscordRuntime {
   #heartbeatAcked = true;
   #reconnectTimer = null;
   #reconnectAttempt = 0;
+  #createBridge;
   #generation = 0;
   #stopped = true;
   #starting = null;
@@ -587,6 +588,7 @@ export class DiscordRuntime {
     createApi = (options) => new DiscordApi(options),
     createWebSocket = (url) => new WebSocket(url),
     random = Math.random,
+    createBridge = (options) => new DiscordHarnessBridge(options),
   }) {
     if (!config || !token || !harness || !state) {
       throw new TypeError('DiscordRuntime requires config, token, Harness, and state');
@@ -605,6 +607,7 @@ export class DiscordRuntime {
     this.#createApi = createApi;
     this.#createWebSocket = createWebSocket;
     this.#random = random;
+    this.#createBridge = createBridge;
   }
 
   get status() {
@@ -686,7 +689,7 @@ export class DiscordRuntime {
       }
       this.#gatewayUrl = gateway?.url;
       const client = new DiscordBotClient({ api, signal: controller.signal });
-      this.#bridge = new DiscordHarnessBridge({
+      this.#bridge = this.#createBridge({
         bot: client,
         harness: this.#harness,
         state: this.#state,

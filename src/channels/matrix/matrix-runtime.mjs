@@ -197,6 +197,7 @@ export class MatrixRuntime {
   #reconnectIndex = 0;
   #inviteTasks = new Map();
   #clock = new ClockSkewGuard({});
+  #createBridge;
   #ring = new EventDedupeRing(1_000);
   #patterns = [];
   #dmRooms = new Set();
@@ -222,6 +223,7 @@ export class MatrixRuntime {
     createCrypto = null,
     roomHistory = null,
     isKnownCommand,
+    createBridge = (options) => new MatrixHarnessBridge(options),
   } = {}) {
     const homeserver = validateMatrixHomeserver(config.homeserver);
     if (!homeserver) throw new TypeError('Matrix runtime requires a valid homeserver');
@@ -257,6 +259,7 @@ export class MatrixRuntime {
     this.#status.e2eeMode = this.#config.e2eeMode;
     this.#logger = logger;
     this.#createApi = createApi;
+    this.#createBridge = createBridge;
     if (cryptoStore != null
       && (typeof cryptoStore.load !== 'function'
         || typeof cryptoStore.bootstrap !== 'function'
@@ -422,7 +425,7 @@ export class MatrixRuntime {
     if (generation !== this.#generation) return;
     this.#clock = new ClockSkewGuard({});
     this.#ring.seed(this.#state.snapshot?.()?.seenMessageIds ?? []);
-    this.#bridge = new MatrixHarnessBridge({
+    this.#bridge = this.#createBridge({
       descriptor: { ...MATRIX_DESCRIPTOR, reactions: this.#config.reactions ? MATRIX_DESCRIPTOR.reactions : {} },
       bot: this.#createBotClient(),
       harness: this.#harness,

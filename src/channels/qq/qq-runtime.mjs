@@ -47,6 +47,7 @@ export class QqRuntime {
   #status = createQqRuntimeStatus();
   #bot = null;
   #bridge = null;
+  #createBridge;
   #abortController = null;
   #runTask = null;
   #starting = null;
@@ -64,6 +65,7 @@ export class QqRuntime {
     connectTimeoutMs = 20_000,
     createBot = (options) => new QQBot(options),
     typingMiddleware = typingIndicator,
+    createBridge = (options) => new QqHarnessBridge(options),
   }) {
     if (!config || !appSecret || !harness || !state) {
       throw new TypeError('QqRuntime requires config, app secret, Harness, and state');
@@ -80,6 +82,7 @@ export class QqRuntime {
     this.#connectTimeoutMs = connectTimeoutMs;
     this.#createBot = createBot;
     this.#typingMiddleware = typingMiddleware;
+    this.#createBridge = createBridge;
   }
 
   get status() {
@@ -188,7 +191,7 @@ export class QqRuntime {
     const controller = new AbortController();
     this.#abortController = controller;
     this.#bot = bot;
-    this.#bridge = new QqHarnessBridge({
+    this.#bridge = this.#createBridge({
       bot,
       ownerUserOpenid: this.#config.ownerUserOpenid,
       harness: this.#harness,

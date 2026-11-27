@@ -114,7 +114,7 @@ function nonEmptyString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function messageText(message) {
+export function messageText(message) {
   if (message?.msgtype !== 'text') return '';
   return typeof message.text?.content === 'string' ? message.text.content : '';
 }

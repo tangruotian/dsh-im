@@ -96,6 +96,9 @@ export async function createProductionController(ctx, config = {}, internals = {
     ...(fileIngressExecutor ? { fileIngressExecutor } : {}),
     imageInputPolicy: () => getImageInputSettingsStore(config).get(),
   });
+  // SDK hook: let the host decorate the shared Harness client (e.g. Ella
+  // attaches its information-flow ingress) before any runtime is created.
+  internals.extendHarness?.(harness, ctx);
   const modelCatalog = (options) => listModelCatalog(harness, options);
   const coreController = new ResolvedController({
     credentials: ctx.credentials,
@@ -113,6 +116,8 @@ export async function createProductionController(ctx, config = {}, internals = {
         botId, workspaces, state, agentPresetCatalog,
       });
       return new ResolvedRuntime({
+        // Host-supplied bridge factory; undefined keeps the runtime default.
+        createBridge: internals.createBridge,
         config: botConfig,
         botToken,
         appToken,

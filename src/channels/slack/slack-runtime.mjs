@@ -502,6 +502,7 @@ export class SlackRuntime {
   #api = null;
   #bridge = null;
   #abortController = null;
+  #createBridge;
   #socket = null;
   #appId = null;
   #reconnectTimer = null;
@@ -524,6 +525,7 @@ export class SlackRuntime {
     connectTimeoutMs = 20_000,
     createApi = (options) => new SlackApi(options),
     createWebSocket = (url) => new WebSocket(url),
+    createBridge = (options) => new SlackHarnessBridge(options),
   }) {
     if (!config || !botToken || !appToken || !harness || !state) {
       throw new TypeError('SlackRuntime requires config, both tokens, Harness, and state');
@@ -542,6 +544,7 @@ export class SlackRuntime {
     this.#connectTimeoutMs = connectTimeoutMs;
     this.#createApi = createApi;
     this.#createWebSocket = createWebSocket;
+    this.#createBridge = createBridge;
   }
 
   get status() {
@@ -621,7 +624,7 @@ export class SlackRuntime {
         throw new Error('Slack Bot Token identity does not match the saved bot');
       }
       const client = new SlackBotClient({ api, signal: controller.signal, logger: this.#logger });
-      this.#bridge = new SlackHarnessBridge({
+      this.#bridge = this.#createBridge({
         bot: client,
         harness: this.#harness,
         state: this.#state,

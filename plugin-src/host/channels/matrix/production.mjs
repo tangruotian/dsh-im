@@ -127,6 +127,9 @@ export async function createProductionController(ctx, config = {}, internals = {
     ...(sessionMaintenanceExecutor ? { sessionMaintenanceExecutor } : {}),
     ...(fileIngressExecutor ? { fileIngressExecutor } : {}),
   });
+  // SDK hook: let the host decorate the shared Harness client (e.g. Ella
+  // attaches its information-flow ingress) before any runtime is created.
+  internals.extendHarness?.(harness, ctx);
   const modelCatalog = (options) => listModelCatalog(harness, options);
   const knownCommandNames = new Set(
     commandsForChannel('matrix').flatMap((entry) => [entry.name, ...entry.aliases.map((alias) => alias.name)]),
@@ -151,6 +154,8 @@ export async function createProductionController(ctx, config = {}, internals = {
       const cryptoStore = e2eeMode === 'off' ? null : await cryptoFor(botId);
       const roomHistory = await historyFor(botId);
       return new ResolvedRuntime({
+        // Host-supplied bridge factory; undefined keeps the runtime default.
+        createBridge: internals.createBridge,
         config: botConfig,
         ...(accessToken ? { accessToken } : {}),
         ...(password ? { password } : {}),

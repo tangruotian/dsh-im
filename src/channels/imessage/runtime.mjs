@@ -28,15 +28,16 @@ export function createIMessageRuntimeStatus() {
 export class IMessageRuntime {
   #config; #token; #harness; #state; #contextEnhancement; #accessPolicy; #logger;
   #diagnostics;
-  #replyTimeoutMs; #pollIntervalMs; #createApi; #status = createIMessageRuntimeStatus();
+  #replyTimeoutMs; #pollIntervalMs; #createApi; #createBridge; #status = createIMessageRuntimeStatus();
   #api; #bridge; #abortController; #timer; #polling; #stopped = true;
   constructor({ config, token, harness, state, contextEnhancement, accessPolicy, logger = console,
     replyTimeoutMs = 600_000, pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
-    createApi = (options) => new MacOSMessagesApi(options) }) {
+    createApi = (options) => new MacOSMessagesApi(options),
+    createBridge = (options) => new IMessageHarnessBridge(options) }) {
     if (!config || !token || !harness || !state) throw new TypeError('IMessageRuntime requires config, token, Harness, and state');
     this.#config = config; this.#token = token; this.#harness = harness; this.#state = state;
     this.#contextEnhancement = contextEnhancement; this.#accessPolicy = accessPolicy; this.#logger = logger; this.#diagnostics = createConnectionDiagnostics({ channel: 'imessage', logger });
-    this.#replyTimeoutMs = replyTimeoutMs; this.#pollIntervalMs = pollIntervalMs; this.#createApi = createApi;
+    this.#replyTimeoutMs = replyTimeoutMs; this.#pollIntervalMs = pollIntervalMs; this.#createApi = createApi; this.#createBridge = createBridge;
   }
   get status() { return structuredClone(this.#status); }
   async sendConnectionTest(text) {
@@ -75,7 +76,7 @@ export class IMessageRuntime {
         await this.#state.setCursor(await this.#api.getLatestMessageRowId());
       }
       const client = new IMessageBotClient(this.#api, this.#abortController.signal);
-      this.#bridge = new IMessageHarnessBridge({ bot: client, harness: this.#harness, state: this.#state,
+      this.#bridge = this.#createBridge({ bot: client, harness: this.#harness, state: this.#state,
         contextEnhancement: this.#contextEnhancement, accessPolicy: this.#accessPolicy, status: this.#status,
         logger: this.#logger, replyTimeoutMs: this.#replyTimeoutMs, signal: this.#abortController.signal });
       this.#status.ready = true; this.#status.connectionState = 'connected'; this.#status.lastConnectedAt = Date.now();

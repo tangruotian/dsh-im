@@ -147,6 +147,9 @@ export async function createTokenProductionController(ctx, config, internals, de
     ...(fileIngressExecutor ? { fileIngressExecutor } : {}),
     imageInputPolicy: () => getImageInputSettingsStore(config).get(),
   });
+  // SDK hook: let the host decorate the shared Harness client (e.g. Ella
+  // attaches its information-flow ingress) before any runtime is created.
+  internals.extendHarness?.(harness, ctx);
   const modelCatalog = (options) => listModelCatalog(harness, options);
   // Assigned just below. A transport may need to write a rotated token back
   // through the controller, which is only constructible after createRuntime is
@@ -196,6 +199,8 @@ export async function createTokenProductionController(ctx, config, internals, de
         })
         : null;
       return new ResolvedRuntime({
+        // Host-supplied bridge factory; undefined keeps the runtime default.
+        createBridge: internals.createBridge,
         ...channelRuntimeOptions,
         config: botConfig,
         token,

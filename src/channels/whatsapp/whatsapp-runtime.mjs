@@ -733,6 +733,7 @@ export class WhatsappRuntime {
   #connectTimeoutMs;
   #mediaUploadTimeoutMs;
   #createSession;
+  #createBridge;
   #status = createWhatsappRuntimeStatus();
   #abortController = null;
   #session = null;
@@ -753,6 +754,7 @@ export class WhatsappRuntime {
     connectTimeoutMs = 30_000,
     mediaUploadTimeoutMs = WHATSAPP_MEDIA_UPLOAD_TIMEOUT_MS,
     createSession = createWhatsappWebSession,
+    createBridge = (options) => new WhatsappHarnessBridge(options),
   }) {
     if (!config || !authDir || !harness || !state || typeof createSession !== 'function') {
       throw new TypeError('WhatsappRuntime requires config, auth directory, Harness, state, and session factory');
@@ -775,6 +777,7 @@ export class WhatsappRuntime {
       WHATSAPP_MEDIA_UPLOAD_TIMEOUT_MS,
     );
     this.#createSession = createSession;
+    this.#createBridge = createBridge;
   }
 
   get status() {
@@ -882,7 +885,7 @@ export class WhatsappRuntime {
         logger: this.#logger,
       });
       this.#client = client;
-      this.#bridge = new WhatsappHarnessBridge({
+      this.#bridge = this.#createBridge({
         bot: client,
         harness: this.#harness,
         state: this.#state,

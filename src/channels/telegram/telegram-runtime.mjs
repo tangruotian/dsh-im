@@ -1504,6 +1504,7 @@ export class TelegramRuntime {
   #abortController = null;
   #pollTask = null;
   #starting = null;
+  #createBridge;
   // True only while #start() is between "started connecting" and "ready",
   // which is the one window a skipped refresh must be reconciled. A refresh on
   // a never-started or already-stopped runtime stays a no-op.
@@ -1528,6 +1529,7 @@ export class TelegramRuntime {
     createApi = (options) => new TelegramApi(options),
     createHttpTransport = createTelegramHttpTransport,
     commandCatalog = SHARED_COMMAND_CATALOG,
+    createBridge = (options) => new TelegramHarnessBridge(options),
   }) {
     if (!config || !token || !harness || !state) {
       throw new TypeError('TelegramRuntime requires config, token, Harness, and state');
@@ -1557,6 +1559,7 @@ export class TelegramRuntime {
     this.#createApi = createApi;
     this.#createHttpTransport = createHttpTransport;
     this.#commandCatalog = commandCatalog;
+    this.#createBridge = createBridge;
   }
 
   get status() {
@@ -1666,7 +1669,7 @@ export class TelegramRuntime {
         thinkingNumbering: this.#config?.thinkingNumbering,
         thinkingIntervalSeconds: this.#config?.thinkingIntervalSeconds,
       });
-      this.#bridge = new TelegramHarnessBridge({
+      this.#bridge = this.#createBridge({
         bot: client,
         harness: this.#harness,
         state: this.#state,

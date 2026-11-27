@@ -145,6 +145,7 @@ export class DingtalkRuntime {
   #status;
   #client = null;
   #bridge = null;
+  #createBridge;
   #topic = null;
   #starting = null;
   #connectionMonitor = null;
@@ -165,6 +166,7 @@ export class DingtalkRuntime {
     connectPollIntervalMs = 25,
     api = createDingtalkApi({ logger }),
     streamFactory = defaultStreamFactory,
+    createBridge = (options) => new DingtalkHarnessBridge(options),
   }) {
     if (!config || !nonEmptyString(config.clientId) || !nonEmptyString(clientSecret)) {
       throw new TypeError('DingtalkRuntime requires app credentials');
@@ -185,6 +187,7 @@ export class DingtalkRuntime {
     this.#connectPollIntervalMs = connectPollIntervalMs;
     this.#api = api;
     this.#streamFactory = streamFactory;
+    this.#createBridge = createBridge;
     this.#status = createDingtalkRuntimeStatus({
       pendingSenders: this.#pendingSenders(),
       approvedSenders: approvedSenderCount(config),
@@ -240,7 +243,7 @@ export class DingtalkRuntime {
         }
         this.#status.pendingSenders = this.#pendingSenders();
       }
-      this.#bridge = new DingtalkHarnessBridge({
+      this.#bridge = this.#createBridge({
         api: this.#api,
         clientId: this.#config.clientId,
         clientSecret: this.#clientSecret,

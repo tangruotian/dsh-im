@@ -211,6 +211,9 @@ export async function createProductionController(ctx, config = {}, internals = {
   const proxyEnv = internals.proxyEnv ?? process.env;
   const wsAgent = createFeishuWebSocketAgent(proxyEnv, internals.createProxyAgent);
 
+  // SDK hook: let the host decorate the shared Harness client (e.g. Ella
+  // attaches its information-flow ingress) before any runtime is created.
+  internals.extendHarness?.(harness, ctx);
   const modelCatalog = (options) => listModelCatalog(harness, options);
   const coreController = new Controller({
     logger,
@@ -240,8 +243,10 @@ export async function createProductionController(ctx, config = {}, internals = {
         }
       }
       return new Runtime({
+        // Host-supplied bridge factory; undefined keeps the runtime default.
+        createBridge: internals.createBridge,
         lark,
-        consumerMode: botConfig.consumerMode,
+        consumerMode: internals.consumerMode ?? botConfig.consumerMode,
         acceptExternal,
         botId: id,
         repair,

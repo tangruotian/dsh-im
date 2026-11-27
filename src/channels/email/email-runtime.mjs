@@ -353,6 +353,7 @@ export class EmailRuntime {
   #inFlight = new Set();
   #api;
   #bridge;
+  #createBridge;
   #abortController;
   #timer;
   #polling;
@@ -365,6 +366,7 @@ export class EmailRuntime {
     // default exists for direct construction (tests) and assumes IMAP/SMTP.
     createApi = (options) => new EmailApi(options),
     credential = null, onTokensRefreshed = null, createTransport = null,
+    createBridge = (options) => new EmailHarnessBridge(options),
   }) {
     // `token` is absent for a transport that authenticates another way: the
     // Agent mailbox lets agently-cli hold the credentials in the system
@@ -386,6 +388,7 @@ export class EmailRuntime {
     this.#createApi = typeof createTransport === 'function' ? createTransport : createApi;
     this.#credential = credential ?? null;
     this.#onTokensRefreshed = typeof onTokensRefreshed === 'function' ? onTokensRefreshed : null;
+    this.#createBridge = createBridge;
   }
 
   get status() {
@@ -480,7 +483,7 @@ export class EmailRuntime {
         }
       }
       const client = new EmailBotClient(api, this.#abortController.signal, this.#state);
-      this.#bridge = new EmailHarnessBridge({
+      this.#bridge = this.#createBridge({
         bot: client,
         harness: this.#harness,
         state: this.#state,

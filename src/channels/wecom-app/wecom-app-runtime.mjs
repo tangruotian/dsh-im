@@ -49,6 +49,7 @@ export class WecomAppRuntime {
   #status = createWecomAppRuntimeStatus();
   #api = null;
   #bridge = null;
+  #createBridge;
   #started = false;
   #controller = new AbortController();
 
@@ -62,6 +63,7 @@ export class WecomAppRuntime {
     logger = console,
     callbackServer,
     replyTimeoutMs = 600_000,
+    createBridge = (options) => new WecomAppBridge(options),
   }) {
     if (!config || !secrets || !harness || !state) {
       throw new TypeError('WecomAppRuntime requires config, secrets, Harness, and state');
@@ -79,6 +81,7 @@ export class WecomAppRuntime {
     this.#callbackServer = callbackServer;
     this.#replyTimeoutMs = replyTimeoutMs;
     this.#streamEnabled = config.streamEnabled !== false;
+    this.#createBridge = createBridge;
   }
 
   get status() {
@@ -116,7 +119,7 @@ export class WecomAppRuntime {
       logger: this.#logger,
       signal: undefined,
     });
-    this.#bridge = new WecomAppBridge({
+    this.#bridge = this.#createBridge({
       api: this.#api,
       harness: this.#harness,
       state: this.#state,
